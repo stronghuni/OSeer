@@ -21,12 +21,30 @@ from .schemas import EnvSnapshot
 
 # Tools an agent commonly reaches for; presence/absence strongly shapes predictions.
 CURATED_TOOLS = [
-    "git", "node", "npm", "npx", "pnpm", "yarn", "python3", "pip", "uv",
-    "docker", "kubectl", "brew", "apt", "rg", "jq", "curl", "wget", "make",
-    "go", "cargo", "rustc", "gcc", "psql", "mysql", "sqlite3", "aws", "gh",
+    # shells & core
+    "bash", "zsh", "fish", "sh", "sed", "awk", "grep", "find", "tar", "unzip",
+    "ssh", "scp", "rsync", "curl", "wget", "make", "tmux", "watch",
+    # vcs / hosting
+    "git", "gh", "svn",
+    # node / js
+    "node", "npm", "npx", "pnpm", "yarn", "bun", "deno",
+    # python
+    "python3", "python", "pip", "pip3", "uv", "poetry", "pipenv", "conda",
+    # other languages
+    "go", "cargo", "rustc", "gcc", "clang", "java", "mvn", "gradle",
+    "ruby", "gem", "bundle", "php", "composer", "dotnet",
+    # containers / infra / cloud
+    "docker", "podman", "kubectl", "helm", "terraform", "ansible",
+    "aws", "gcloud", "az",
+    # data / misc
+    "psql", "mysql", "sqlite3", "redis-cli", "mongosh", "rg", "jq", "yq", "brew", "apt",
 ]
 
-PACKAGE_MANAGERS = ["brew", "apt", "npm", "pnpm", "yarn", "pip", "uv", "cargo", "go"]
+PACKAGE_MANAGERS = [
+    "brew", "apt", "apt-get", "yum", "dnf", "pacman", "apk",
+    "npm", "pnpm", "yarn", "bun", "pip", "pip3", "uv", "poetry",
+    "cargo", "go", "gem", "composer",
+]
 
 # Env vars worth sending (non-secret, prediction-relevant). Names are matched case-insensitively.
 RELEVANT_ENV_VARS = [
@@ -164,7 +182,22 @@ class EnvironmentProbe:
         status = _run(["git", "-C", workdir, "status", "--porcelain"])
         dirty = len([ln for ln in status.splitlines() if ln.strip()])
         state = "clean" if dirty == 0 else f"{dirty} uncommitted change(s)"
-        return f"branch={branch or 'DETACHED'} {state}"
+        parts = [f"branch={branch or 'DETACHED'}", state]
+
+        # Remote URL grounds push/pull predictions (avoids hallucinated remotes).
+        remote = _run(["git", "-C", workdir, "remote", "get-url", "origin"])
+        if remote:
+            parts.append(f"origin={remote}")
+
+        # Ahead/behind vs upstream grounds push (non-fast-forward) predictions.
+        counts = _run(["git", "-C", workdir, "rev-list", "--left-right", "--count", "@{u}...HEAD"])
+        if counts and "\t" in counts:
+            behind, ahead = counts.split("\t", 1)
+            parts.append(f"ahead={ahead.strip()} behind={behind.strip()}")
+        elif not _run(["git", "-C", workdir, "rev-parse", "--abbrev-ref", "@{u}"]):
+            parts.append("no-upstream")
+
+        return " ".join(parts)
 
     def _relevant_env(self) -> dict[str, str]:
         wanted = {n.lower() for n in RELEVANT_ENV_VARS}

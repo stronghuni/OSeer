@@ -1,0 +1,17 @@
+{
+  "name": "oseer",
+  "version": "0.1.0",
+  "owner": { "name": "stronghuni", "url": "https://github.com/stronghuni" },
+  "metadata": {
+    "description": "OSeer — predict and risk-check terminal commands before running them."
+  },
+  "plugins": [
+    {
+      "name": "oseer",
+      "displayName": "OSeer",
+      "description": "Dry-run terminal commands before executing them, using the Qwen-AgentWorld world model.",
+      "version": "0.1.0",
+      "source": { "source": "github", "repo": "stronghuni/OSeer", "path": "." }
+    }
+  ]
+}

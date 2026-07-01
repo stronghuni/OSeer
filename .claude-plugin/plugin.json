@@ -1,0 +1,22 @@
+{
+  "name": "oseer",
+  "displayName": "OSeer",
+  "version": "0.1.0",
+  "description": "Dry-run terminal commands before executing them: predicts stdout/stderr/exit code and flags destructive commands, using the Qwen-AgentWorld world model.",
+  "author": { "name": "stronghuni", "url": "https://github.com/stronghuni" },
+  "homepage": "https://github.com/stronghuni/OSeer",
+  "repository": "https://github.com/stronghuni/OSeer",
+  "license": "MIT",
+  "keywords": ["mcp", "terminal", "world-model", "safety", "command-prediction", "qwen"],
+  "mcpServers": {
+    "oseer": {
+      "command": "uv",
+      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}", "oseer"],
+      "env": {
+        "OSEER_API_BASE": "${OSEER_API_BASE}",
+        "OSEER_MODEL": "${OSEER_MODEL}",
+        "OSEER_API_KEY": "${OSEER_API_KEY}"
+      }
+    }
+  }
+}

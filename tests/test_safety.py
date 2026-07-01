@@ -24,6 +24,11 @@ scanner = StaticRiskScanner()
         ("dd if=/dev/zero of=/dev/disk2", Risk.destructive),
         ("mkfs.ext4 /dev/sda1", Risk.destructive),
         ("psql -c 'DROP TABLE users;'", Risk.destructive),
+        ("find . -name '*.log' -delete", Risk.destructive),
+        ("find . -type f -exec rm {} +", Risk.destructive),
+        ("shutdown -h now", Risk.destructive),
+        ("sudo reboot", Risk.destructive),
+        ("git update-ref -d refs/heads/main", Risk.destructive),
     ],
 )
 def test_destructive_commands_flagged(command, expected):
@@ -71,6 +76,17 @@ def test_redirect_truncation_is_caution():
 def test_append_redirect_is_safe():
     a = scanner.assess("echo data >> log.txt")
     assert a.risk == Risk.safe
+
+
+def test_git_restore_discards_is_caution():
+    a = scanner.assess("git restore .")
+    assert a.risk == Risk.caution
+    assert any("discards" in r for r in a.reasons)
+
+
+def test_git_branch_force_delete_is_caution():
+    a = scanner.assess("git branch -D feature")
+    assert a.risk == Risk.caution
 
 
 def test_destructive_sets_rollback_and_suggestions():

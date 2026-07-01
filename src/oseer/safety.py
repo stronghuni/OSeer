@@ -155,6 +155,47 @@ RISK_RULES: list[RiskRule] = [
         "removes Docker resources/volumes",
         reversible=False,
     ),
+    RiskRule(
+        _rx(r"\bfind\b.*\s-delete\b|\bfind\b.*-exec\s+rm\b|\|\s*xargs\s+rm\b"),
+        Risk.destructive,
+        "bulk deletion via find/xargs",
+        reversible=False,
+        rollback="No rollback for deleted files.",
+        suggestion="Run without -delete first to preview what matches.",
+    ),
+    RiskRule(
+        _rx(r"\bgit\s+(checkout|restore)\b.*(\s--\s|\s\.$|\s\.\s)"),
+        Risk.caution,
+        "git checkout/restore discards local changes to the given paths",
+        reversible=False,
+        rollback="Discarded uncommitted changes are not recoverable.",
+        suggestion="git stash to keep a copy before discarding.",
+    ),
+    RiskRule(
+        _rx(r"\bgit\s+branch\s+-D\b|\bgit\s+stash\s+(clear|drop)\b"),
+        Risk.caution,
+        "force-deletes a branch or stash entry",
+        reversible=False,
+        rollback="Recoverable only via `git reflog` while the objects survive.",
+    ),
+    RiskRule(
+        _rx(r"\b(shutdown|reboot|halt|poweroff)\b"),
+        Risk.destructive,
+        "shuts down or reboots the machine",
+        suggestion="Confirm no in-flight work will be lost.",
+    ),
+    RiskRule(
+        _rx(r"\btruncate\s+-s\s*0\b|(^|\s):\s*>\s*\S"),
+        Risk.caution,
+        "truncates a file to zero length",
+        rollback="Truncated contents are lost unless backed up.",
+    ),
+    RiskRule(
+        _rx(r"\bgit\s+update-ref\s+-d\b|\bgit\s+reflog\s+(expire|delete)\b"),
+        Risk.destructive,
+        "deletes git refs/reflog — removes the usual recovery path",
+        reversible=False,
+    ),
 ]
 
 

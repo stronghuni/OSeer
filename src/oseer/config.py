@@ -9,8 +9,11 @@ from __future__ import annotations
 from enum import Enum
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_API_BASE = "http://localhost:8000/v1"
+DEFAULT_MODEL = "Qwen/Qwen-AgentWorld-35B-A3B"
 
 
 class Grounding(str, Enum):
@@ -37,7 +40,7 @@ class Settings(BaseSettings):
     # --- Model API (any OpenAI-compatible Chat Completions host: self-hosted vLLM/SGLang,
     #     Ollama, FriendliAI, …). Default targets a locally self-served vLLM endpoint. ---
     api_base: str = Field(
-        default="http://localhost:8000/v1",
+        default=DEFAULT_API_BASE,
         description="OpenAI-compatible base URL (e.g. vLLM :8000/v1, SGLang :30000/v1, Ollama :11434/v1).",
     )
     api_key: str = Field(
@@ -45,9 +48,18 @@ class Settings(BaseSettings):
         description="Bearer token. OPTIONAL for self-hosted servers (env: OSEER_API_KEY / FRIENDLI_TOKEN).",
     )
     model: str = Field(
-        default="Qwen/Qwen-AgentWorld-35B-A3B",
+        default=DEFAULT_MODEL,
         description="Model id as your server exposes it (or a dedicated endpoint id).",
     )
+
+    @field_validator("api_base", "model", mode="before")
+    @classmethod
+    def _blank_to_default(cls, v, info):
+        # An unset ${OSEER_API_BASE} passthrough arrives as "" — fall back to the default
+        # rather than overriding it with an empty string.
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return DEFAULT_API_BASE if info.field_name == "api_base" else DEFAULT_MODEL
+        return v
 
     # --- Sampling (defaults from the model card) ---
     temperature: float = 0.6

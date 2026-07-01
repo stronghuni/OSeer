@@ -83,31 +83,44 @@ too — just set the base URL, model/endpoint id, and (if required) a key. See
 of these, disable them with `OSEER_JSON_MODE=false`, `OSEER_SEND_THINKING_FLAG=false`, or
 `OSEER_SEND_TOP_K=false`.
 
-### Register with Claude Code
+### Install as a Claude Code plugin (MCP server **+** skill)
+
+OSeer ships as a Claude Code plugin. Installing it gives you **both** the MCP server and a
+`predict` **skill** that makes the agent reach for OSeer proactively before risky commands.
+
+First export your model endpoint (inherited by the plugin's server), then install:
 
 ```bash
-claude mcp add oseer -- uv run --directory /Users/namuneulbo/Desktop/OSeer oseer
+export OSEER_API_BASE=http://your-host:8000/v1     # your self-hosted server
+export OSEER_MODEL=Qwen/Qwen-AgentWorld-35B-A3B
+
+# In Claude Code:
+/plugin marketplace add stronghuni/OSeer
+/plugin install oseer@oseer
 ```
 
-Or add to `.mcp.json`:
+That's it. Now:
 
-```json
-{
-  "mcpServers": {
-    "oseer": {
-      "command": "uv",
-      "args": ["run", "--directory", "/Users/namuneulbo/Desktop/OSeer", "oseer"],
-      "env": { "OSEER_API_KEY": "your_friendli_token" }
-    }
-  }
-}
+- The **`oseer` MCP server** exposes `predict_command`, `predict_tool_call`, `oseer_env_snapshot`
+  (as `mcp__oseer__*`).
+- The **`predict` skill** auto-invokes before destructive/uncertain commands, and you can call it
+  manually with `/oseer:predict`. See [`skills/predict/SKILL.md`](skills/predict/SKILL.md).
+
+### Or register just the MCP server
+
+```bash
+claude mcp add oseer \
+  -e OSEER_API_BASE=http://your-host:8000/v1 \
+  -e OSEER_MODEL=Qwen/Qwen-AgentWorld-35B-A3B \
+  -- uv run --directory /path/to/OSeer oseer
 ```
 
 ### Explore interactively
 
 ```bash
-uv run mcp dev src/oseer/server.py    # MCP Inspector
-uv run python scripts/smoke.py        # live smoke test (needs an API key)
+uv run mcp dev src/oseer/server.py                              # MCP Inspector
+OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/smoke.py       # 4-command smoke test
+OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/scenarios.py   # 5-persona matrix
 ```
 
 ## Configuration
@@ -145,16 +158,24 @@ uv sync --extra dev
 uv run pytest              # full offline suite (no API key needed)
 ```
 
-Tests are fully offline (mocked provider + stub environment). Layout:
+The unit suite is fully offline (mocked provider + stub environment). Two live scripts exercise a
+real server: `scripts/smoke.py` (4 commands) and `scripts/scenarios.py` (the same commands across 5
+synthetic user personas — macOS/zsh, Ubuntu/bash, Alpine, Python venv, no-git — asserting the safety
+invariants hold in every environment). Layout:
 
 ```
+.claude-plugin/
+  plugin.json     Claude Code plugin manifest (bundles the MCP server, inline)
+  marketplace.json marketplace entry for `/plugin marketplace add`
+skills/predict/
+  SKILL.md        agent skill that invokes the MCP tools proactively
 src/oseer/
   server.py       FastMCP server + tool definitions
   predict.py      orchestrator (env → static → model → parse → merge)
   environment.py  read-only, cached, secret-sanitized environment probe
   safety.py       static risk scanner + deterministic short-circuits
-  providers/      OpenAI-compatible model client (FriendliAI)
-  prompts/        terminal + MCP domain world-model prompts
+  providers/      OpenAI-compatible model client
+  prompts/        terminal + MCP domain world-model prompts (env/path/tool grounding)
   parsing.py      tolerant JSON extraction + field coercion
   schemas.py      Pydantic prediction schemas
 ```
