@@ -97,6 +97,16 @@ def test_coercion_tolerates_wrong_types():
     assert pred.rollback_hint is None
 
 
+def test_numeric_risk_scale():
+    # Some models emit an ordinal 0/1/2 risk scale instead of the string enum.
+    assert to_command_prediction({"risk": 0}, "x").risk == Risk.safe
+    assert to_command_prediction({"risk": 1}, "x").risk == Risk.caution
+    assert to_command_prediction({"risk": 2}, "x").risk == Risk.destructive
+    assert to_command_prediction({"risk": 3}, "x").risk == Risk.destructive
+    assert to_command_prediction({"risk": "2"}, "x").risk == Risk.destructive
+    assert to_command_prediction({"risk": "high"}, "x").risk == Risk.destructive
+
+
 def test_missing_fields_get_defaults():
     pred = to_command_prediction({}, "echo hi")
     assert pred.predicted_stdout == ""

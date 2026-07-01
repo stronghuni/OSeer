@@ -130,14 +130,30 @@ def _as_float01(v: Any, default: float = 0.5) -> float:
     return min(1.0, max(0.0, f))
 
 
+def _risk_from_number(n: float) -> Risk:
+    """Map an ordinal 0/1/2 risk scale (some models emit numbers) to the enum."""
+    i = int(n)
+    if i <= 0:
+        return Risk.safe
+    if i == 1:
+        return Risk.caution
+    return Risk.destructive
+
+
 def _as_risk(v: Any) -> Risk:
+    if isinstance(v, bool):  # guard: bool is a subclass of int
+        return Risk.destructive if v else Risk.safe
+    if isinstance(v, (int, float)):
+        return _risk_from_number(v)
     if isinstance(v, str):
         key = v.strip().lower()
         if key in Risk._value2member_map_:
             return Risk(key)
-        if key in {"high", "danger", "dangerous"}:
+        if key.replace(".", "", 1).isdigit():  # numeric string, e.g. "2"
+            return _risk_from_number(float(key))
+        if key in {"high", "danger", "dangerous", "critical", "severe"}:
             return Risk.destructive
-        if key in {"medium", "warn", "warning", "low"}:
+        if key in {"medium", "moderate", "warn", "warning", "low", "minimal"}:
             return Risk.caution
     return Risk.safe
 
