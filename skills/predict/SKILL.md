@@ -8,6 +8,9 @@ description: >-
   command that might not exist on this machine. Also use when the user asks to "predict",
   "dry-run", "what would this command do", or "is this command safe".
 allowed-tools:
+  - mcp__plugin_oseer_oseer__predict_command
+  - mcp__plugin_oseer_oseer__predict_tool_call
+  - mcp__plugin_oseer_oseer__oseer_env_snapshot
   - mcp__oseer__predict_command
   - mcp__oseer__predict_tool_call
   - mcp__oseer__oseer_env_snapshot
@@ -21,7 +24,7 @@ as a safety gate so you don't run wrong, wasteful, or irreversible commands.
 
 ## When to use (proactively)
 
-Before you would call the Bash tool, first call `mcp__oseer__predict_command` when the command is:
+Before you would call the Bash tool, first call `predict_command` when the command is:
 
 - **Destructive / irreversible** — `rm`, `rm -rf`, `git push --force`, `git reset --hard`,
   `DROP`/`TRUNCATE`/`DELETE`, `dd`, `mkfs`, `find … -delete`, `chmod -R`, `docker … prune`.
@@ -33,7 +36,7 @@ For routine read-only commands (`ls`, `cat`, `git status`), just run them — no
 
 ## How to use it
 
-1. Call `mcp__oseer__predict_command` with the exact `command` (and `cwd` if not the default).
+1. Call `predict_command` with the exact `command` (and `cwd` if not the default).
 2. Read the returned prediction:
    - `predicted_stdout` / `predicted_stderr` / `predicted_exit_code`
    - `risk` (`safe` | `caution` | `destructive`), `risk_reasons`, `reversible`, `rollback_hint`
@@ -49,12 +52,12 @@ For routine read-only commands (`ls`, `cat`, `git status`), just run them — no
 ## Predicting MCP tool calls
 
 Before invoking another MCP tool whose effect is uncertain or irreversible (writes, deletes, sends,
-payments), call `mcp__oseer__predict_tool_call` with the `server`, `tool`, and `arguments` to
+payments), call `predict_tool_call` with the `server`, `tool`, and `arguments` to
 predict its result and side effects first.
 
 ## Notes
 
 - Predictions are **advisory**, not execution, and the model is imperfect — always weigh `confidence`
   and `assumptions`, and never treat a prediction as the real result for irreversible actions.
-- `mcp__oseer__oseer_env_snapshot` shows exactly what OSeer knows about this machine (useful for
+- `oseer_env_snapshot` shows exactly what OSeer knows about this machine (useful for
   debugging why a prediction looks off).

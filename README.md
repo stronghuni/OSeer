@@ -102,7 +102,8 @@ export OSEER_MODEL=Qwen/Qwen-AgentWorld-35B-A3B
 That's it. Now:
 
 - The **`oseer` MCP server** exposes `predict_command`, `predict_tool_call`, `oseer_env_snapshot`
-  (as `mcp__oseer__*`).
+  (as `mcp__plugin_oseer_oseer__*` when installed as a plugin, or `mcp__oseer__*` if you add the
+  server directly).
 - The **`predict` skill** auto-invokes before destructive/uncertain commands, and you can call it
   manually with `/oseer:predict`. See [`skills/predict/SKILL.md`](skills/predict/SKILL.md).
 
