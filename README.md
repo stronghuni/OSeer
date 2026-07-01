@@ -52,6 +52,22 @@ Key guarantees:
 | `predict_tool_call(server, tool, arguments, context?)` | Predict the result and side effects of another MCP tool call. |
 | `oseer_env_snapshot(refresh?)` | Show the sanitized environment OSeer would send to the model (transparency/debug). |
 
+**Example** — `predict_command("git push --force origin main")` returns:
+
+```json
+{
+  "command": "git push --force origin main",
+  "predicted_exit_code": 0,
+  "risk": "destructive",
+  "risk_reasons": ["force push can overwrite remote history for others"],
+  "reversible": false,
+  "rollback_hint": "Recoverable only via reflog if someone still has the old commits.",
+  "suggestions": ["Use --force-with-lease, or push to a new branch."],
+  "confidence": 0.95,
+  "source": "model"
+}
+```
+
 ## Setup
 
 Requires Python ≥ 3.11 and [`uv`](https://docs.astral.sh/uv/).
@@ -123,9 +139,10 @@ claude mcp add oseer \
 ### Explore interactively
 
 ```bash
-uv run mcp dev src/oseer/server.py                              # MCP Inspector
-OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/smoke.py       # 4-command smoke test
-OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/scenarios.py   # 5-persona matrix
+uv run mcp dev src/oseer/server.py                                            # MCP Inspector
+OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/smoke.py        # 4-command smoke test
+OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/scenarios.py    # 5-persona matrix
+OSEER_API_BASE=http://your-host:8000/v1 uv run python scripts/verify_live.py  # 12-check verification
 ```
 
 ## Configuration
@@ -163,26 +180,30 @@ uv sync --extra dev
 uv run pytest              # full offline suite (no API key needed)
 ```
 
-The unit suite is fully offline (mocked provider + stub environment). Two live scripts exercise a
-real server: `scripts/smoke.py` (4 commands) and `scripts/scenarios.py` (the same commands across 5
-synthetic user personas — macOS/zsh, Ubuntu/bash, Alpine, Python venv, no-git — asserting the safety
-invariants hold in every environment). Layout:
+The **88 offline unit tests** are fully deterministic (mocked provider + stub environment — no server
+needed). Three scripts exercise a **real** server: `scripts/smoke.py` (4 commands),
+`scripts/scenarios.py` (the same commands across 5 synthetic user personas — macOS/zsh, Ubuntu/bash,
+Alpine, Python venv, no-git — asserting the safety invariants hold in every environment), and
+`scripts/verify_live.py` (a 12-check end-to-end harness: grounding, secret sanitization, all risk
+tiers, static short-circuit, reasoning, caching, and graceful degradation). Layout:
 
 ```
 .claude-plugin/
-  plugin.json     Claude Code plugin manifest (bundles the MCP server, inline)
+  plugin.json      Claude Code plugin manifest (bundles the MCP server, inline)
   marketplace.json marketplace entry for `/plugin marketplace add`
 skills/predict/
-  SKILL.md        agent skill that invokes the MCP tools proactively
+  SKILL.md         agent skill that invokes the MCP tools proactively
 src/oseer/
-  server.py       FastMCP server + tool definitions
-  predict.py      orchestrator (env → static → model → parse → merge)
-  environment.py  read-only, cached, secret-sanitized environment probe
-  safety.py       static risk scanner + deterministic short-circuits
-  providers/      OpenAI-compatible model client
-  prompts/        terminal + MCP domain world-model prompts (env/path/tool grounding)
-  parsing.py      tolerant JSON extraction + field coercion
-  schemas.py      Pydantic prediction schemas
+  server.py        FastMCP server + tool definitions
+  predict.py       orchestrator (env → static → model → parse → merge)
+  environment.py   read-only, cached, secret-sanitized environment probe
+  safety.py        static risk scanner + deterministic short-circuits
+  providers/       OpenAI-compatible model client
+  prompts/         terminal + MCP domain world-model prompts (env/path/tool grounding)
+  parsing.py       tolerant JSON extraction + field coercion
+  schemas.py       Pydantic prediction schemas
+scripts/           smoke · scenarios · verify_live (live-server checks)
+tests/             offline pytest suite
 ```
 
 ## License
