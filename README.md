@@ -1,5 +1,9 @@
 # OSeer — OS Seer 🔮
 
+<p align="center">
+  <img src="public/oracle_crystal_ball.png" alt="OSeer — the OS oracle" width="360">
+</p>
+
 **An MCP server that lets an AI agent dry-run a terminal command _before_ executing it.**
 
 Coding agents run commands blind: they execute, then react to failures, wasted work, or
